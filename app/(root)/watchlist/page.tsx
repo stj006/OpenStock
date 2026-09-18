@@ -1,5 +1,7 @@
 import React, { Suspense } from 'react';
-import { auth } from '@/lib/better-auth/auth';
+import { getAuth } from '@/lib/better-auth/auth';
+
+export const dynamic = 'force-dynamic';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getUserWatchlist } from '@/lib/actions/watchlist.actions';
@@ -12,6 +14,7 @@ import SearchCommand from '@/components/SearchCommand';
 import { Loader2 } from 'lucide-react';
 
 export default async function WatchlistPage() {
+    const auth = await getAuth();
     const session = await auth.api.getSession({
         headers: await headers()
     });
@@ -22,21 +25,17 @@ export default async function WatchlistPage() {
 
     const userId = session.user.id;
 
-    // Parallel data fetching
     const [watchlistItems, alerts, news] = await Promise.all([
         getUserWatchlist(userId),
         getUserAlerts(userId),
-        getNews() // Initial news fetch
+        getNews()
     ]);
 
     const watchlistSymbols = watchlistItems.map((item: any) => item.symbol);
-
-    // Fallback news if watchlist has items
     const relevantNews = watchlistSymbols.length > 0 ? await getNews(watchlistSymbols) : news;
 
     return (
         <div className="min-h-screen bg-black text-gray-100 p-6 md:p-8">
-            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                 <div>
                     <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500">
@@ -50,19 +49,14 @@ export default async function WatchlistPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                {/* Main Content - Watchlist Table */}
                 <div className="lg:col-span-3 space-y-8">
                     <div className="space-y-6">
                         <WatchlistManager initialItems={watchlistItems} userId={userId} />
                     </div>
-
-                    {/* News Section */}
                     <Suspense fallback={<div className="flex justify-center p-12"><Loader2 className="animate-spin text-gray-500" /></div>}>
                         <NewsGrid news={relevantNews || []} />
                     </Suspense>
                 </div>
-
-                {/* Sidebar - Alerts */}
                 <div className="lg:col-span-1">
                     <AlertsPanel alerts={alerts} />
                 </div>
